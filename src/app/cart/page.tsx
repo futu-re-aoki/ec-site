@@ -1,47 +1,81 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Header from "@/components/Header";
 import Image from "next/image";
 import Link from "next/link";
-import {
-  getCartItems,
-  updateQty,
-  removeItem,
-  finalizeOrder,
-} from "@/lib/repos/productRepo";
-import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import { useRouter } from "next/navigation";
 import { SHIPPING_FEE } from "@/constants/index";
+import type { CartItem } from "@/types";
 
 // --- サーバーアクション ------------------------------
-export async function changeQty(formData: FormData) {
-  "use server";
-  const id = Number(formData.get("id"));
-  const qty = Number(formData.get("qty"));
-  updateQty(id, qty);
-  revalidatePath("/cart");
-}
+// export async function changeQty(formData: FormData) {
+//   "use server";
+//   const id = Number(formData.get("id"));
+//   const qty = Number(formData.get("qty"));
+//   updateQty(id, qty);
+//   revalidatePath("/cart");
+// }
 
-export async function deleteItem(formData: FormData) {
-  "use server";
-  const id = Number(formData.get("id"));
-  removeItem(id);
-  revalidatePath("/cart");
-}
+// export async function deleteItem(formData: FormData) {
+//   "use server";
+//   const id = Number(formData.get("id"));
+//   removeItem(id);
+//   revalidatePath("/cart");
+// }
 
-export async function checkout() {
-  "use server";
-  const cart = getCartItems();
-  if (cart.length === 0) redirect("/cart");
+// export async function checkout() {
+//   "use server";
+//   const cart = getCartItems();
+//   if (cart.length === 0) redirect("/cart");
 
-  const cartId = cart[0].order_id ?? 1;
-  const { orderId } = finalizeOrder(cartId, SHIPPING_FEE);
-  redirect(`/thanks?order=${orderId}`);
-}
+//   const cartId = cart[0].order_id ?? 1;
+//   const { orderId } = finalizeOrder(cartId, SHIPPING_FEE);
+//   redirect(`/thanks?order=${orderId}`);
+// }
 // ----------------------------------------------------
 
 export default function CartPage() {
-  const items = getCartItems();
+  // const items = getCartItems();
+  const [items, setItems] = useState<CartItem[]>([]);
   const subtotal = items.reduce((s, i) => s + i.price_yen * i.quantity, 0);
   const total = items.length ? subtotal + SHIPPING_FEE : 0;
+  const router = useRouter();
+
+  async function getCartItems() {
+    const res = await fetch("/api/cart/items");
+    const data: CartItem[] = await res.json();
+    setItems(data);
+  }
+
+  useEffect(() => {
+    getCartItems();
+  }, []);
+
+  async function changeQty(productId: number, quantity: number) {
+    await fetch("/api/cart/item", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ productId, quantity }),
+    });
+    getCartItems();
+  }
+
+  async function deleteItem(productId: number) {
+    await fetch("/api/cart/item", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ productId }),
+    });
+    getCartItems();
+  }
+
+  async function checkout() {
+    if (items.length === 0) return;
+    const res = await fetch("/api/cart/checkout", { method: "POST" });
+    const { orderId } = await res.json();
+    router.push(`/thanks?order=${orderId}`);
+  }
 
   return (
     <div className="h-full">
@@ -59,7 +93,7 @@ export default function CartPage() {
                   <p>{i.name}</p>
                   <p>¥{i.price_yen.toLocaleString()}</p>
                 </div>
-                <form action={changeQty}>
+                {/* <form action={changeQty}>
                   <input type="hidden" name="id" value={i.id} />
                   <input
                     type="number"
@@ -73,7 +107,19 @@ export default function CartPage() {
                 <form action={deleteItem}>
                   <input type="hidden" name="id" value={i.id} />
                   <button className="ml-2 text-red-600">削除</button>
-                </form>
+                </form> */}
+                <input
+                  type="number"
+                  min={0}
+                  defaultValue={i.quantity}
+                  className="w-16 border px-1"
+                  onChange={(e) =>
+                    changeQty(i.id, Number((e.target as HTMLInputElement).value))
+                  }
+                />
+                <button onClick={() => deleteItem(i.id)} className="ml-2 text-red-600">
+                  削除
+                </button>
               </div>
             ))}
             <div className="text-right mt-6">

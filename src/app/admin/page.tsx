@@ -1,18 +1,45 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Image from "next/image";
-import { getAllProducts, changeProductStock } from "@/lib/repos/productRepo";
-import { revalidatePath } from "next/cache";
+import type { Product } from "@/types";
 
 // サーバーアクション
-async function changeProductStockAction(formData: FormData) {
-  "use server";
-  const id = Number(formData.get("id"));
-  const delta = Number(formData.get("delta"));
-  changeProductStock(id, delta);
-  revalidatePath("/admin");
-}
+// async function changeProductStockAction(formData: FormData) {
+//   "use server";
+//   const id = Number(formData.get("id"));
+//   const delta = Number(formData.get("delta"));
+//   changeProductStock(id, delta);
+//   revalidatePath("/admin");
+// }
 
 export default function Admin() {
-  const products = getAllProducts();
+  // const products = getAllProducts();
+  const [products, setProducts] = useState<Product[]>([]);
+
+  async function fetchProducts() {
+    try {
+      const res = await fetch("/api/products");
+      if (!res.ok) throw new Error(`status ${res.status}`);
+      const productsList: Product[] = await res.json();
+      setProducts(productsList);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async function changeProductStock(id: number, delta: number) {
+    await fetch("/api/products/stock", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, delta }),
+    });
+    fetchProducts();
+  }
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
 
   return (
     <div className="h-full">
@@ -36,17 +63,29 @@ export default function Admin() {
               </td>
               <td className="p-2">¥{p.price_yen.toLocaleString()}</td>
               <td className="p-2">
-                <form className="inline mr-2" action={changeProductStockAction}>
+                {/* <form className="inline mr-2" action={changeProductStockAction}>
                   <input type="hidden" name="id" value={p.id} />
                   <input type="hidden" name="delta" value={-1} />
                   <button className="border px-2">-</button>
-                </form>
+                </form> */}
+                <button
+                  className="border px-2 mr-2"
+                  onClick={() => changeProductStock(p.id, -1)}
+                >
+                  -
+                </button>
                 {p.stock}
-                <form className="inline ml-2" action={changeProductStockAction}>
+                <button
+                  className="border px-2 ml-2"
+                  onClick={() => changeProductStock(p.id, 1)}
+                >
+                  +
+                </button>
+                {/* <form className="inline ml-2" action={changeProductStockAction}>
                   <input type="hidden" name="id" value={p.id} />
                   <input type="hidden" name="delta" value={1} />
                   <button className="border px-2">+</button>
-                </form>
+                </form> */}
               </td>
             </tr>
           ))}

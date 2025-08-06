@@ -1,27 +1,58 @@
-import { notFound, redirect } from "next/navigation";
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import Header from "@/components/Header";
-import { addCartItem, getProductById } from "@/lib/repos/productRepo";
+import type { Product } from "@/types";
 
-type Props = {
-  params: { id: string };
-};
+// type Props = {
+//   params: { id: string };
+// };
 
 // サーバーアクション
-export async function addToCart(formData: FormData) {
-  "use server";
-  const productId = Number(formData.get("productId"));
-  addCartItem(productId, 1);
-  redirect("/cart");
-}
+// export async function addToCart(formData: FormData) {
+//   "use server";
+//   const productId = Number(formData.get("productId"));
+//   addCartItem(productId, 1);
+//   redirect("/cart");
+// }
 
-export default function ProductDetail({ params }: Props) {
-  const id = Number(params.id);
-  const product = getProductById(id);
+// export default function ProductDetail({ params }: Props) {
+export default function ProductDetail() {
+  // const id = Number(params.id);
+  const { id } = useParams<{ id: string }>();
+  // const product = getProductById(id);
+  const [product, setProduct] = useState<Product | null>(null);
+  const router = useRouter();
 
-  if (!product) {
-    notFound();
+  useEffect(() => {
+    async function getProduct() {
+      try {
+        const res = await fetch(`/api/products/${id}`);
+        if (!res.ok) throw new Error("request failed");
+        const data = await res.json();
+        setProduct(data);
+      } catch {
+        setProduct(null);
+      }
+    }
+    getProduct();
+  }, [id]);
+
+  // if (!product) {
+  //   notFound();
+  // }
+  if (!product) return null;
+
+  async function addToCart() {
+    await fetch("/api/cart/add", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ productId: id }),
+    });
+    router.push("/cart");
   }
 
   return (
@@ -39,12 +70,15 @@ export default function ProductDetail({ params }: Props) {
         <p className="mt-2 text-lg">価格: ¥{product.price_yen.toLocaleString()}</p>
         <p>在庫数: {product.stock}</p>
         <div className="mt-6 flex gap-4">
-          <form action={addToCart}>
+          {/* <form action={addToCart}>
             <input type="hidden" name="productId" value={product.id} />
             <button className="px-4 py-2 bg-black text-white rounded">
               カートに追加
             </button>
-          </form>
+          </form> */}
+          <button onClick={addToCart} className="px-4 py-2 bg-black text-white rounded">
+            カートに追加
+          </button>
           <Link href="/" className="px-4 py-2 border rounded">
             一覧へ戻る
           </Link>

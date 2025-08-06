@@ -1,10 +1,28 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Header from "@/components/Header";
 import Image from "next/image";
-import { getAllProducts } from "@/lib/repos/productRepo";
 import Link from "next/link";
+import type { Product } from "@/types";
 
 export default function Home() {
-  const products = getAllProducts();
+  // const products = getAllProducts();
+  const [products, setProducts] = useState<Product[]>([]);
+
+  useEffect(() => {
+    async function fetchProducts() {
+      try {
+        const res = await fetch("/api/products");
+        if (!res.ok) throw new Error(`status ${res.status}`);
+        const productsList: Product[] = await res.json();
+        setProducts(productsList);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    fetchProducts();
+  }, []);
 
   return (
     <div className="h-full">
