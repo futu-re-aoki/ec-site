@@ -1,0 +1,45 @@
+@startuml ecommerce.db
+' ===============================
+'  Entities
+' ===============================
+rectangle "商品" {
+  entity "products" {
+    *id : INTEGER <<PK>>
+    --
+    name        : TEXT
+    image_url   : TEXT
+    price_yen   : INTEGER
+    stock       : INTEGER
+    created_at  : TEXT
+    updated_at  : TEXT
+  }
+}
+
+rectangle "注文" {
+  entity "orders" {
+    *id : INTEGER <<PK>>
+    --
+    total_yen    : INTEGER
+    shipping_fee : INTEGER
+    status       : TEXT
+    created_at   : TEXT
+  }
+
+  entity "order_items" {
+    *id : INTEGER <<PK>>
+    --
+    order_id   : INTEGER <<FK>>
+    product_id : INTEGER <<FK>>
+    quantity   : INTEGER
+    price_yen  : INTEGER
+    created_at : TEXT
+  }
+}
+
+' ===============================
+'  Relationships
+' ===============================
+products ||..o{ order_items
+orders   ||..o{ order_items
+
+@enduml
